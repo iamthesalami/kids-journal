@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- viewport-fit=cover lets our CSS reach into the iPhone's safe-area insets (notch/home indicator) -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Kids Journal</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#efe7d8">
+
+<!-- iOS-specific "Add to Home Screen" support. Safari ignores manifest.json
+     icons for the home screen icon, so we need this explicit link too. -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kids Journal">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===================== TIMELINE ===================== -->
+  <section id="view-timeline" class="view">
+    <header class="topbar">
+      <h1>Kids Journal</h1>
+    </header>
+
+    <div id="timeline-list" class="timeline-list"></div>
+    <p id="timeline-empty" class="empty-state" hidden>No moments yet.<br>Tap the microphone below to add your first one.</p>
+
+    <div id="select-bar" class="select-bar" hidden>
+      <span id="select-count">0 selected</span>
+      <button id="btn-select-migrate" type="button" class="btn-primary btn-small">Migrate</button>
+      <button id="btn-select-cancel" type="button" class="btn-secondary btn-small">Cancel</button>
+    </div>
+
+    <nav class="bottom-bar">
+      <button id="btn-select-mode" class="bar-btn" type="button" aria-label="Select moments">
+        <span class="bar-icon">▤</span><span class="bar-label">Select</span>
+      </button>
+      <button id="btn-new-dictate" class="bar-btn-fab" type="button" aria-label="New moment, ready to dictate">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+          <path d="M5 10a7 7 0 0 0 14 0"></path>
+          <line x1="12" y1="19" x2="12" y2="22"></line>
+          <line x1="8" y1="22" x2="16" y2="22"></line>
+        </svg>
+      </button>
+      <button id="btn-settings" class="bar-btn" type="button" aria-label="Settings">
+        <span class="bar-icon">⚙</span><span class="bar-label">Settings</span>
+      </button>
+    </nav>
+  </section>
+
+  <!-- ===================== ENTRY EDITOR ===================== -->
+  <section id="view-entry" class="view" hidden>
+    <header class="topbar">
+      <button id="btn-entry-back" class="text-btn" type="button">Back</button>
+      <p id="entry-date" class="entry-date"></p>
+      <button id="btn-entry-delete" class="text-btn danger" type="button" hidden>Delete</button>
+    </header>
+
+    <div class="editor-body">
+      <textarea id="entry-text" class="entry-textarea" rows="6"
+        placeholder="What happened today? e.g. Kids went to the Ekka today..."></textarea>
+      <p class="dictation-hint">Tap above, then tap the microphone on your keyboard to dictate hands-free.</p>
+
+      <div class="field-group">
+        <label>Photos</label>
+        <div id="photo-grid" class="photo-grid"></div>
+        <div class="photo-buttons">
+          <button id="btn-add-camera" type="button" class="text-btn-outline">Take Photo</button>
+          <button id="btn-add-library" type="button" class="text-btn-outline">Choose Photos</button>
+        </div>
+        <!-- capture="environment" opens the camera directly on iOS; the plain
+             input opens the normal Photos picker and allows multi-select. -->
+        <input type="file" id="input-camera" accept="image/*" capture="environment" hidden>
+        <input type="file" id="input-library" accept="image/*" multiple hidden>
+      </div>
+    </div>
+
+    <div class="editor-footer">
+      <button id="btn-save-entry" class="btn-primary" type="button">Save Moment</button>
+    </div>
+  </section>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <section id="view-settings" class="view" hidden>
+    <header class="topbar">
+      <button id="btn-settings-back" class="text-btn" type="button">Back</button>
+      <p class="entry-date">Settings</p>
+      <span class="text-btn" style="visibility:hidden">Back</span>
+    </header>
+
+    <div class="list-menu">
+      <button id="btn-export" type="button" class="list-row">
+        <span>Export All Data</span><span class="list-row-chevron">›</span>
+      </button>
+      <button id="btn-clear-data" type="button" class="list-row danger">
+        <span>Clear All Data</span><span class="list-row-chevron">›</span>
+      </button>
+    </div>
+    <p class="about-text">Kids Journal stores everything only on this device. Nothing is ever uploaded anywhere.</p>
+  </section>
+
+  <!-- ===================== MIGRATE ===================== -->
+  <section id="view-migrate" class="view" hidden>
+    <header class="topbar">
+      <button id="btn-migrate-back" class="text-btn" type="button">Back</button>
+      <p class="entry-date">Migrate</p>
+      <span class="text-btn" style="visibility:hidden">Back</span>
+    </header>
+
+    <div id="migrate-picker">
+      <div class="editor-body">
+        <div class="quick-select-row">
+          <button id="btn-quick-7days" class="text-btn-outline" type="button">Last 7 Days</button>
+          <button id="btn-quick-all" class="text-btn-outline" type="button">Select All</button>
+        </div>
+        <div id="migrate-list" class="migrate-list"></div>
+        <p id="migrate-empty" class="empty-state" hidden>No un-migrated moments yet.</p>
+      </div>
+      <div class="editor-footer">
+        <button id="btn-summarise" class="btn-primary" type="button">Prepare Text (<span id="migrate-selected-count">0</span> selected)</button>
+      </div>
+    </div>
+
+    <div id="migrate-result" class="editor-body" hidden>
+      <label for="migrate-output">Copy this into your favourite AI chat and ask it to combine these into one journal entry. Then paste the result into your Word journal.</label>
+      <textarea id="migrate-output" class="entry-textarea" rows="14"></textarea>
+      <div class="migrate-result-buttons">
+        <button id="btn-copy-output" class="text-btn-outline" type="button">Copy to Clipboard</button>
+        <button id="btn-share-output" class="text-btn-outline" type="button">Share</button>
+      </div>
+      <button id="btn-mark-migrated" class="btn-primary" type="button">Mark These as Migrated</button>
+      <button id="btn-migrate-cancel-result" class="text-btn" type="button">Back</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
