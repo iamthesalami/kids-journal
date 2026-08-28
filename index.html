@@ -24,7 +24,7 @@
 <div id="app">
 
   <!-- ===================== TIMELINE ===================== -->
-  <section id="view-timeline" class="view">
+  <section id="view-timeline" class="view has-bottom-bar">
     <header class="topbar">
       <h1>Kids Journal</h1>
     </header>
@@ -37,23 +37,30 @@
       <button id="btn-select-migrate" type="button" class="btn-primary btn-small">Migrate</button>
       <button id="btn-select-cancel" type="button" class="btn-secondary btn-small">Cancel</button>
     </div>
+  </section>
 
-    <nav class="bottom-bar">
-      <button id="btn-select-mode" class="bar-btn" type="button" aria-label="Select moments">
-        <span class="bar-icon">▤</span><span class="bar-label">Select</span>
-      </button>
-      <button id="btn-new-dictate" class="bar-btn-fab" type="button" aria-label="New moment, ready to dictate">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- ===================== TASKS ===================== -->
+  <section id="view-tasks" class="view has-bottom-bar" hidden>
+    <header class="topbar">
+      <h1>Tasks</h1>
+    </header>
+
+    <div class="task-add-row">
+      <input type="text" id="task-input" placeholder="Add a task..." autocomplete="off">
+      <button id="btn-task-mic" class="task-mic-btn" type="button" aria-label="Dictate a task">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="2" width="6" height="12" rx="3"></rect>
           <path d="M5 10a7 7 0 0 0 14 0"></path>
           <line x1="12" y1="19" x2="12" y2="22"></line>
           <line x1="8" y1="22" x2="16" y2="22"></line>
         </svg>
       </button>
-      <button id="btn-settings" class="bar-btn" type="button" aria-label="Settings">
-        <span class="bar-icon">⚙</span><span class="bar-label">Settings</span>
-      </button>
-    </nav>
+    </div>
+
+    <div id="task-list" class="task-list"></div>
+    <p id="task-empty" class="empty-state" hidden>No tasks yet.<br>Dictate one above, then tap Return to add it.</p>
+
+    <button id="btn-clear-completed" class="text-btn" type="button" hidden>Clear completed</button>
   </section>
 
   <!-- ===================== ENTRY EDITOR ===================== -->
@@ -97,6 +104,9 @@
     </header>
 
     <div class="list-menu">
+      <button id="btn-open-select" type="button" class="list-row">
+        <span>Select Moments to Migrate</span><span class="list-row-chevron">›</span>
+      </button>
       <button id="btn-export" type="button" class="list-row">
         <span>Export All Data</span><span class="list-row-chevron">›</span>
       </button>
@@ -140,6 +150,26 @@
       <button id="btn-migrate-cancel-result" class="text-btn" type="button">Back</button>
     </div>
   </section>
+
+  <!-- Persistent bottom bar — visible on Timeline and Tasks, hidden on the
+       full-screen editor/settings/migrate views (which have their own Back
+       navigation). The left button context-switches between the two. -->
+  <nav id="bottom-bar" class="bottom-bar">
+    <button id="btn-toggle-view" class="bar-btn" type="button">
+      <span id="toggle-view-icon" class="bar-icon">▤</span><span id="toggle-view-label" class="bar-label">Tasks</span>
+    </button>
+    <button id="btn-new-dictate" class="bar-btn-fab" type="button" aria-label="Dictate">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+        <path d="M5 10a7 7 0 0 0 14 0"></path>
+        <line x1="12" y1="19" x2="12" y2="22"></line>
+        <line x1="8" y1="22" x2="16" y2="22"></line>
+      </svg>
+    </button>
+    <button id="btn-settings" class="bar-btn" type="button" aria-label="Settings">
+      <span class="bar-icon">⚙</span><span class="bar-label">Settings</span>
+    </button>
+  </nav>
 
 </div>
 

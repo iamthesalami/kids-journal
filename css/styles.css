@@ -78,6 +78,11 @@ h1 {
 
 .view {
   min-height: 100vh;
+}
+/* Only the two views that show the persistent bottom bar need to reserve
+   space for it; the full-screen editor/settings/migrate views scroll their
+   own footer instead. */
+.view.has-bottom-bar {
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
@@ -249,6 +254,108 @@ h1 {
   padding: 70px 30px;
   line-height: 1.7;
   font-style: italic;
+}
+
+/* ---------- Tasks ---------- */
+.task-add-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.task-add-row input[type="text"] {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 2px;
+}
+.task-add-row input[type="text"]:focus { outline: none; border-bottom-color: var(--accent); }
+
+.task-mic-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.task-mic-btn:active { opacity: 0.85; }
+
+.task-list {
+  position: relative; /* drag reordering measures row.offsetTop against this */
+  padding: 4px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.task-row.dragging {
+  opacity: 0.6;
+  box-shadow: var(--shadow);
+}
+
+.task-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.task-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 6px 2px;
+}
+.task-row input[type="text"]:focus { outline: none; }
+.task-row.done input[type="text"] {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.task-drag-handle {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.task-delete {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+#btn-clear-completed {
+  display: block;
+  margin: 8px auto 0;
 }
 
 /* ---------- Bottom toolbar ---------- */

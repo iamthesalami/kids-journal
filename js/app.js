@@ -12,10 +12,31 @@
 
   // ---------------------------------------------------------------
   // View routing — just show/hide <section class="view"> elements.
+  // The persistent bottom bar only makes sense on the two "home" views
+  // (Timeline and Tasks); the full-screen editor/settings/migrate views
+  // have their own Back button instead.
   // ---------------------------------------------------------------
+  let currentView = 'timeline';
+
   function showView(name) {
+    currentView = name;
     $$('.view').forEach((v) => (v.hidden = v.id !== `view-${name}`));
+    const isHomeView = name === 'timeline' || name === 'tasks';
+    $('#bottom-bar').hidden = !isHomeView;
+    if (isHomeView) updateToggleButton();
     window.scrollTo(0, 0);
+  }
+
+  function updateToggleButton() {
+    const icon = $('#toggle-view-icon');
+    const label = $('#toggle-view-label');
+    if (currentView === 'tasks') {
+      icon.textContent = '▤';
+      label.textContent = 'Journal';
+    } else {
+      icon.textContent = '☑';
+      label.textContent = 'Tasks';
+    }
   }
 
   // ---------------------------------------------------------------
@@ -310,7 +331,7 @@
   async function exportAllData() {
     const entries = await DB.getAllEntries();
     const photosMap = await DB.getAllPhotosGrouped();
-    const out = { exportedAt: new Date().toISOString(), entries: [] };
+    const out = { exportedAt: new Date().toISOString(), entries: [], tasks };
 
     for (const entry of entries) {
       const photos = photosMap.get(entry.id) || [];
@@ -333,9 +354,11 @@
   }
 
   async function clearAllData() {
-    if (!confirm('Delete ALL moments and photos on this device? This cannot be undone.')) return;
+    if (!confirm('Delete ALL moments, photos, and tasks on this device? This cannot be undone.')) return;
     if (!confirm('Are you absolutely sure? There is no way to recover this data afterwards.')) return;
     await DB.clearAll();
+    tasks = [];
+    saveTasks();
     showView('timeline');
     renderTimeline();
   }
@@ -473,18 +496,209 @@
   }
 
   // ---------------------------------------------------------------
+  // Tasks — a simple always-editable checklist. Kept in localStorage
+  // rather than IndexedDB: there are no photos here, so a plain JSON
+  // array is plenty and avoids all the async ceremony. Supports
+  // touch-based drag reordering, since native HTML5 drag-and-drop
+  // doesn't work reliably on iOS Safari.
+  // ---------------------------------------------------------------
+  const TASKS_KEY = 'kidsJournalTasks';
+
+  function loadTasks() {
+    try {
+      return JSON.parse(localStorage.getItem(TASKS_KEY)) || [];
+    } catch {
+      return [];
+    }
+  }
+  function saveTasks() {
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  }
+  let tasks = loadTasks();
+  let dragState = null;
+
+  function buildTaskRow(task) {
+    const row = document.createElement('div');
+    row.className = 'task-row' + (task.done ? ' done' : '');
+    row.dataset.id = task.id;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = task.done;
+    checkbox.addEventListener('change', () => {
+      task.done = checkbox.checked;
+      saveTasks();
+      row.classList.toggle('done', task.done);
+      updateClearCompletedVisibility();
+    });
+    row.appendChild(checkbox);
+
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.value = task.text;
+    text.addEventListener('input', () => {
+      task.text = text.value;
+      saveTasks();
+    });
+    row.appendChild(text);
+
+    const handle = document.createElement('div');
+    handle.className = 'task-drag-handle';
+    handle.textContent = '⠿';
+    handle.addEventListener('pointerdown', (e) => startTaskDrag(e, row));
+    row.appendChild(handle);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'task-delete';
+    del.textContent = '✕';
+    del.setAttribute('aria-label', 'Delete task');
+    del.addEventListener('click', () => {
+      tasks = tasks.filter((t) => t.id !== task.id);
+      saveTasks();
+      renderTasks();
+    });
+    row.appendChild(del);
+
+    return row;
+  }
+
+  function renderTasks() {
+    const list = $('#task-list');
+    list.innerHTML = '';
+    $('#task-empty').hidden = tasks.length !== 0;
+    for (const task of tasks) list.appendChild(buildTaskRow(task));
+    updateClearCompletedVisibility();
+  }
+
+  function updateClearCompletedVisibility() {
+    $('#btn-clear-completed').hidden = !tasks.some((t) => t.done);
+  }
+
+  function addTask(text) {
+    // New tasks go to the top, so the one you just dictated is right
+    // there in front of you as you keep going.
+    tasks.unshift({ id: DB.uuid(), text, done: false });
+    saveTasks();
+    renderTasks();
+  }
+
+  function clearCompletedTasks() {
+    tasks = tasks.filter((t) => !t.done);
+    saveTasks();
+    renderTasks();
+  }
+
+  // Drag reordering: the dragged row's on-screen position is driven purely
+  // by the pointer (translateY relative to its own natural, untransformed
+  // offsetTop), while neighbours are swapped in the DOM live as the
+  // dragged row's center crosses their center. Because the transform is
+  // always recomputed as (desired position − current natural position),
+  // it stays visually continuous across swaps with no manual jump
+  // correction needed.
+  function startTaskDrag(e, row) {
+    e.preventDefault();
+    const list = $('#task-list');
+    const listRect = list.getBoundingClientRect();
+    dragState = {
+      row,
+      grabOffset: e.clientY - (listRect.top + row.offsetTop),
+      listTop: listRect.top,
+      pointerId: e.pointerId,
+    };
+    row.classList.add('dragging');
+    row.style.position = 'relative';
+    row.setPointerCapture(e.pointerId);
+    row.addEventListener('pointermove', onTaskDragMove);
+    row.addEventListener('pointerup', endTaskDrag);
+    row.addEventListener('pointercancel', endTaskDrag);
+  }
+
+  function onTaskDragMove(e) {
+    if (!dragState) return;
+    const { row, grabOffset, listTop } = dragState;
+    const desiredTop = e.clientY - grabOffset - listTop;
+
+    const list = $('#task-list');
+    const rows = Array.from(list.children);
+    const index = rows.indexOf(row);
+    const draggedCenter = desiredTop + row.offsetHeight / 2;
+
+    const prev = rows[index - 1];
+    const next = rows[index + 1];
+    if (prev && draggedCenter < prev.offsetTop + prev.offsetHeight / 2) {
+      list.insertBefore(row, prev);
+    } else if (next && draggedCenter > next.offsetTop + next.offsetHeight / 2) {
+      list.insertBefore(next, row);
+    }
+
+    row.style.transform = `translateY(${desiredTop - row.offsetTop}px)`;
+  }
+
+  function endTaskDrag() {
+    if (!dragState) return;
+    const { row, pointerId } = dragState;
+    row.releasePointerCapture(pointerId);
+    row.removeEventListener('pointermove', onTaskDragMove);
+    row.removeEventListener('pointerup', endTaskDrag);
+    row.removeEventListener('pointercancel', endTaskDrag);
+    row.classList.remove('dragging');
+    row.style.transform = '';
+    row.style.position = '';
+    dragState = null;
+
+    // Persist the on-screen order back into the tasks array.
+    const ids = Array.from($('#task-list').children).map((r) => r.dataset.id);
+    tasks.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    saveTasks();
+  }
+
+  // ---------------------------------------------------------------
   // Wire up all event listeners
   // ---------------------------------------------------------------
   function init() {
-    $('#btn-new-dictate').addEventListener('click', () => openEntryEditor(null));
+    // The mic button is context-sensitive: a new journal moment from the
+    // Timeline, or just focusing the add-task field while on Tasks.
+    $('#btn-new-dictate').addEventListener('click', () => {
+      if (currentView === 'tasks') {
+        $('#task-input').focus();
+      } else {
+        openEntryEditor(null);
+      }
+    });
     $('#btn-settings').addEventListener('click', () => showView('settings'));
-    $('#btn-select-mode').addEventListener('click', () => setSelectMode(!selectMode));
+    $('#btn-toggle-view').addEventListener('click', () => {
+      if (currentView === 'tasks') {
+        showView('timeline');
+        renderTimeline();
+      } else {
+        showView('tasks');
+        renderTasks();
+      }
+    });
+
+    $('#btn-open-select').addEventListener('click', () => {
+      showView('timeline');
+      setSelectMode(true);
+    });
     $('#btn-select-cancel').addEventListener('click', () => setSelectMode(false));
     $('#btn-select-migrate').addEventListener('click', () => {
       const ids = Array.from(selectedIds);
       setSelectMode(false);
       openMigrate(ids);
     });
+
+    $('#btn-task-mic').addEventListener('click', () => $('#task-input').focus());
+    $('#task-input').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const input = $('#task-input');
+      const value = input.value.trim();
+      if (value) addTask(value);
+      input.value = '';
+      input.focus();
+    });
+    $('#btn-clear-completed').addEventListener('click', clearCompletedTasks);
 
     $('#btn-entry-back').addEventListener('click', () => { showView('timeline'); renderTimeline(); });
     $('#btn-save-entry').addEventListener('click', saveEntry);
@@ -521,6 +735,7 @@
     });
 
     renderTimeline();
+    updateToggleButton();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => { /* offline caching just won't be available */ });
