@@ -513,11 +513,6 @@ h1 {
 }
 .bar-btn-fab:active { opacity: 0.85; }
 
-/* Balances the bar visually now that Settings has moved to its own corner
-   button — without this, space-between would push the mic button to the
-   far right instead of the middle. */
-.bar-btn-spacer { min-width: 44px; }
-
 /* ---------- Settings corner button ---------- */
 .corner-settings-btn {
   position: fixed;
@@ -544,45 +539,6 @@ h1 {
   cursor: pointer;
 }
 .corner-settings-btn:active { opacity: 0.85; }
-
-/* ---------- Nav picker (Journal / Tasks / Notes) ---------- */
-.nav-sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 22;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.nav-sheet {
-  position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  z-index: 23;
-  max-width: 528px;
-  margin: 0 auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.nav-sheet-row {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  padding: 16px;
-  font-size: 1rem;
-  color: var(--text);
-  text-align: center;
-  cursor: pointer;
-}
-.nav-sheet-row:last-child { border-bottom: none; }
-.nav-sheet-row:active { background: var(--surface-2); }
-.nav-sheet-row.current { font-weight: 700; color: var(--accent); }
 
 /* ---------- Select bar ---------- */
 .select-bar {

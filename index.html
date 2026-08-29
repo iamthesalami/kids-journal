@@ -199,11 +199,14 @@
 
   <!-- Persistent bottom bar — visible on Timeline, Tasks and Notes; hidden
        on the full-screen editor/settings/migrate views (which have their
-       own Back navigation). The left button opens a small picker to jump
-       between the three home views. -->
+       own Back navigation). The two flanking buttons jump directly to the
+       other two home views — no popover. Which view sits on which side is
+       decided in JS: whichever view you were on right before the current
+       one goes on the left, so ping-ponging between two favourites always
+       keeps the other one a single tap away on the left. -->
   <nav id="bottom-bar" class="bottom-bar">
-    <button id="btn-nav-menu" class="bar-btn" type="button">
-      <span id="nav-menu-icon" class="bar-icon">☰</span><span id="nav-menu-label" class="bar-label">Journal</span>
+    <button id="btn-nav-left" class="bar-btn" type="button">
+      <span class="bar-icon"></span><span class="bar-label"></span>
     </button>
     <button id="btn-new-dictate" class="bar-btn-fab" type="button" aria-label="Dictate">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -213,16 +216,10 @@
         <line x1="8" y1="22" x2="16" y2="22"></line>
       </svg>
     </button>
-    <div class="bar-btn-spacer" aria-hidden="true"></div>
+    <button id="btn-nav-right" class="bar-btn" type="button">
+      <span class="bar-icon"></span><span class="bar-label"></span>
+    </button>
   </nav>
-
-  <!-- Small popover for jumping between the three home views. -->
-  <div id="nav-sheet-backdrop" class="nav-sheet-backdrop" hidden></div>
-  <div id="nav-sheet" class="nav-sheet" hidden>
-    <button type="button" class="nav-sheet-row" data-view="timeline">Journal</button>
-    <button type="button" class="nav-sheet-row" data-view="tasks">Tasks</button>
-    <button type="button" class="nav-sheet-row" data-view="notes">Notes</button>
-  </div>
 
   <!-- Settings — a quiet, semi-transparent corner button, visible on the
        same three home views as the bottom bar. -->

@@ -16,39 +16,46 @@
   // sense on the three "home" views (Journal, Tasks, Notes); the
   // full-screen editor/settings/migrate views have their own Back button
   // instead.
+  //
+  // The bottom bar's two flanking buttons jump directly to the other two
+  // home views — whichever one you were on right before the current view
+  // sits on the left, and the third (least recently visited) sits on the
+  // right. Ping-ponging between two favourite views this way always keeps
+  // the other one a single tap away on the left, without a popover.
   // ---------------------------------------------------------------
   const HOME_VIEWS = { timeline: 'Journal', tasks: 'Tasks', notes: 'Notes' };
+  const HOME_VIEW_ICONS = { timeline: '▤', tasks: '☑', notes: '✎' };
   let currentView = 'timeline';
+  let lastHomeView = 'tasks'; // sensible default for the very first render
 
   function showView(name) {
+    const wasHome = currentView in HOME_VIEWS;
+    const isHomeView = name in HOME_VIEWS;
+    if (wasHome && isHomeView && name !== currentView) {
+      lastHomeView = currentView;
+    }
     currentView = name;
     $$('.view').forEach((v) => (v.hidden = v.id !== `view-${name}`));
-    const isHomeView = name in HOME_VIEWS;
     $('#bottom-bar').hidden = !isHomeView;
     $('#btn-settings').hidden = !isHomeView;
-    if (isHomeView) updateNavButton();
+    if (isHomeView) updateBottomBarNav();
     window.scrollTo(0, 0);
   }
 
-  function updateNavButton() {
-    $('#nav-menu-label').textContent = HOME_VIEWS[currentView] || 'Journal';
+  function setNavButton(btn, view) {
+    btn.dataset.view = view;
+    btn.querySelector('.bar-icon').textContent = HOME_VIEW_ICONS[view];
+    btn.querySelector('.bar-label').textContent = HOME_VIEWS[view];
   }
 
-  function openNavSheet() {
-    $$('.nav-sheet-row').forEach((row) => {
-      row.classList.toggle('current', row.dataset.view === currentView);
-    });
-    $('#nav-sheet').hidden = false;
-    $('#nav-sheet-backdrop').hidden = false;
-  }
-
-  function closeNavSheet() {
-    $('#nav-sheet').hidden = true;
-    $('#nav-sheet-backdrop').hidden = true;
+  function updateBottomBarNav() {
+    const leftView = lastHomeView;
+    const rightView = Object.keys(HOME_VIEWS).find((v) => v !== currentView && v !== leftView);
+    setNavButton($('#btn-nav-left'), leftView);
+    setNavButton($('#btn-nav-right'), rightView);
   }
 
   function goToHomeView(name) {
-    closeNavSheet();
     showView(name);
     if (name === 'timeline') renderTimeline();
     else if (name === 'tasks') renderTasks();
@@ -899,11 +906,8 @@
     });
     $('#btn-settings').addEventListener('click', () => showView('settings'));
 
-    $('#btn-nav-menu').addEventListener('click', openNavSheet);
-    $('#nav-sheet-backdrop').addEventListener('click', closeNavSheet);
-    $$('.nav-sheet-row').forEach((row) => {
-      row.addEventListener('click', () => goToHomeView(row.dataset.view));
-    });
+    $('#btn-nav-left').addEventListener('click', () => goToHomeView($('#btn-nav-left').dataset.view));
+    $('#btn-nav-right').addEventListener('click', () => goToHomeView($('#btn-nav-right').dataset.view));
 
     $('#btn-note-back').addEventListener('click', () => { showView('notes'); renderNotesList(); });
     $('#btn-save-note').addEventListener('click', saveNote);
@@ -971,7 +975,7 @@
     });
 
     renderTimeline();
-    updateNavButton();
+    updateBottomBarNav();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => { /* offline caching just won't be available */ });
