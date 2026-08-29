@@ -299,7 +299,15 @@
     removedPhotoIds = [];
 
     $('#entry-text').value = '';
+    $('#entry-date').textContent = formatDateLabel(new Date().toISOString());
     $('#btn-entry-delete').hidden = !editingEntryId;
+    renderEditorPhotoGrid();
+
+    // Show the view and focus the textarea *before* any `await` below —
+    // see the matching comment in openNoteEditor() for why: focusing
+    // after an awaited read can silently fail to raise iOS's keyboard.
+    showView('entry');
+    $('#entry-text').focus();
 
     if (editingEntryId) {
       const entry = await DB.getEntry(editingEntryId);
@@ -307,13 +315,8 @@
       $('#entry-date').textContent = formatDateLabel(entry.createdAt);
       $('#entry-text').value = entry.text || '';
       editorPhotos = photos.map((p) => ({ id: p.id, blob: p.blob, isNew: false }));
-    } else {
-      $('#entry-date').textContent = formatDateLabel(new Date().toISOString());
+      renderEditorPhotoGrid();
     }
-
-    renderEditorPhotoGrid();
-    showView('entry');
-    $('#entry-text').focus();
   }
 
   function addFilesToEditor(fileList) {
@@ -832,7 +835,19 @@
 
     $('#note-title').value = '';
     $('#note-text').value = '';
+    $('#note-date').textContent = formatDateLabel(new Date().toISOString());
     $('#btn-note-delete').hidden = !editingNoteId;
+    renderNoteColorSwatches();
+    renderNoteEditorPhotoGrid();
+
+    // Show the view and focus the title *before* any `await` below. iOS
+    // Safari only reliably raises the keyboard (and its dictation mic) for
+    // a focus() call made within the original tap's call stack — once
+    // execution resumes after an awaited IndexedDB read, even a fast one,
+    // the keyboard can silently fail to appear. So we focus first, then
+    // fill in the loaded note's details a moment later.
+    showView('note-editor');
+    $('#note-title').focus();
 
     if (editingNoteId) {
       const note = await DB.getNote(editingNoteId);
@@ -842,14 +857,9 @@
       $('#note-text').value = note.text || '';
       selectedNoteColor = note.color || null;
       editorNotePhotos = photos.map((p) => ({ id: p.id, blob: p.blob, isNew: false }));
-    } else {
-      $('#note-date').textContent = formatDateLabel(new Date().toISOString());
+      renderNoteColorSwatches();
+      renderNoteEditorPhotoGrid();
     }
-
-    renderNoteColorSwatches();
-    renderNoteEditorPhotoGrid();
-    showView('note-editor');
-    $('#note-title').focus();
   }
 
   function addFilesToNoteEditor(fileList) {

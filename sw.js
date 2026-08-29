@@ -4,7 +4,7 @@
  * Bump CACHE_NAME whenever any cached file changes so the browser fetches
  * fresh copies instead of serving stale ones from an old cache.
  */
-const CACHE_NAME = 'kids-journal-v8';
+const CACHE_NAME = 'kids-journal-v9';
 
 const SHELL_FILES = [
   './',
