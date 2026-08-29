@@ -12,31 +12,47 @@
 
   // ---------------------------------------------------------------
   // View routing — just show/hide <section class="view"> elements.
-  // The persistent bottom bar only makes sense on the two "home" views
-  // (Timeline and Tasks); the full-screen editor/settings/migrate views
-  // have their own Back button instead.
+  // The persistent bottom bar (and the Settings corner button) only make
+  // sense on the three "home" views (Journal, Tasks, Notes); the
+  // full-screen editor/settings/migrate views have their own Back button
+  // instead.
   // ---------------------------------------------------------------
+  const HOME_VIEWS = { timeline: 'Journal', tasks: 'Tasks', notes: 'Notes' };
   let currentView = 'timeline';
 
   function showView(name) {
     currentView = name;
     $$('.view').forEach((v) => (v.hidden = v.id !== `view-${name}`));
-    const isHomeView = name === 'timeline' || name === 'tasks';
+    const isHomeView = name in HOME_VIEWS;
     $('#bottom-bar').hidden = !isHomeView;
-    if (isHomeView) updateToggleButton();
+    $('#btn-settings').hidden = !isHomeView;
+    if (isHomeView) updateNavButton();
     window.scrollTo(0, 0);
   }
 
-  function updateToggleButton() {
-    const icon = $('#toggle-view-icon');
-    const label = $('#toggle-view-label');
-    if (currentView === 'tasks') {
-      icon.textContent = '▤';
-      label.textContent = 'Journal';
-    } else {
-      icon.textContent = '☑';
-      label.textContent = 'Tasks';
-    }
+  function updateNavButton() {
+    $('#nav-menu-label').textContent = HOME_VIEWS[currentView] || 'Journal';
+  }
+
+  function openNavSheet() {
+    $$('.nav-sheet-row').forEach((row) => {
+      row.classList.toggle('current', row.dataset.view === currentView);
+    });
+    $('#nav-sheet').hidden = false;
+    $('#nav-sheet-backdrop').hidden = false;
+  }
+
+  function closeNavSheet() {
+    $('#nav-sheet').hidden = true;
+    $('#nav-sheet-backdrop').hidden = true;
+  }
+
+  function goToHomeView(name) {
+    closeNavSheet();
+    showView(name);
+    if (name === 'timeline') renderTimeline();
+    else if (name === 'tasks') renderTasks();
+    else if (name === 'notes') renderNotesList();
   }
 
   // ---------------------------------------------------------------
@@ -53,6 +69,8 @@
   }
   const timelineUrls = makeUrlTracker();
   const editorUrls = makeUrlTracker();
+  const notesListUrls = makeUrlTracker();
+  const noteEditorUrls = makeUrlTracker();
 
   function formatDateLabel(iso) {
     const d = new Date(iso);
@@ -64,6 +82,17 @@
     yesterday.setDate(now.getDate() - 1);
     if (sameDay(d, yesterday)) return `Yesterday, ${time}`;
     return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + `, ${time}`;
+  }
+
+  // Notes just need a quiet, compact date in the corner — not the precise
+  // "Today, 3:42 PM" style journal entries use, since for a note the date
+  // is present but deliberately not the main point.
+  function formatNoteDate(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const opts = { day: 'numeric', month: 'short' };
+    if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString([], opts);
   }
 
   function startOfDay(d) {
@@ -331,7 +360,9 @@
   async function exportAllData() {
     const entries = await DB.getAllEntries();
     const photosMap = await DB.getAllPhotosGrouped();
-    const out = { exportedAt: new Date().toISOString(), entries: [], tasks };
+    const notes = await DB.getAllNotes();
+    const notePhotosMap = await DB.getAllNotePhotosGrouped();
+    const out = { exportedAt: new Date().toISOString(), entries: [], notes: [], tasks };
 
     for (const entry of entries) {
       const photos = photosMap.get(entry.id) || [];
@@ -340,6 +371,15 @@
         photoData.push({ dataUrl: await blobToDataURL(p.blob), type: p.blob.type });
       }
       out.entries.push({ ...entry, photos: photoData });
+    }
+
+    for (const note of notes) {
+      const photos = notePhotosMap.get(note.id) || [];
+      const photoData = [];
+      for (const p of photos) {
+        photoData.push({ dataUrl: await blobToDataURL(p.blob), type: p.blob.type });
+      }
+      out.notes.push({ ...note, photos: photoData });
     }
 
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
@@ -354,7 +394,7 @@
   }
 
   async function clearAllData() {
-    if (!confirm('Delete ALL moments, photos, and tasks on this device? This cannot be undone.')) return;
+    if (!confirm('Delete ALL moments, notes, photos, and tasks on this device? This cannot be undone.')) return;
     if (!confirm('Are you absolutely sure? There is no way to recover this data afterwards.')) return;
     await DB.clearAll();
     tasks = [];
@@ -654,6 +694,195 @@
   }
 
   // ---------------------------------------------------------------
+  // Notes — quick colour-tagged jottings (ideas, names, anything you want
+  // to note down and delete again easily). A flat list, no day-grouping,
+  // no migrate flow — just create/edit/delete. Photos reuse the same
+  // IndexedDB pattern as journal entries, just in their own stores.
+  // ---------------------------------------------------------------
+  const NOTE_COLORS = ['rose', 'sage', 'gold', 'slate', 'terracotta'];
+
+  function buildNoteRow(note, photos) {
+    const row = document.createElement('div');
+    row.className = 'note-row';
+    row.dataset.id = note.id;
+    if (note.color) row.style.setProperty('--note-color', `var(--note-${note.color})`);
+
+    const date = document.createElement('span');
+    date.className = 'note-row-date';
+    date.textContent = formatNoteDate(note.createdAt);
+    row.appendChild(date);
+
+    const title = document.createElement('p');
+    title.className = 'note-row-title';
+    title.textContent = note.title || '(untitled)';
+    row.appendChild(title);
+
+    if (note.text) {
+      const text = document.createElement('p');
+      text.className = 'note-row-text';
+      text.textContent = note.text;
+      row.appendChild(text);
+    }
+
+    if (photos.length) {
+      const photoRow = document.createElement('div');
+      photoRow.className = 'note-row-photos';
+      for (const p of photos) {
+        const img = document.createElement('img');
+        img.src = notesListUrls.track(URL.createObjectURL(p.blob));
+        img.alt = '';
+        photoRow.appendChild(img);
+      }
+      row.appendChild(photoRow);
+    }
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'note-delete';
+    del.textContent = '✕';
+    del.setAttribute('aria-label', 'Delete note');
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await DB.deleteNote(note.id);
+      renderNotesList();
+    });
+    row.appendChild(del);
+
+    row.addEventListener('click', () => openNoteEditor(note.id));
+    return row;
+  }
+
+  async function renderNotesList() {
+    const notes = await DB.getAllNotes();
+    const photosMap = await DB.getAllNotePhotosGrouped();
+    notesListUrls.revokeAll();
+
+    const list = $('#notes-list');
+    list.innerHTML = '';
+    $('#notes-empty').hidden = notes.length !== 0;
+    for (const note of notes) list.appendChild(buildNoteRow(note, photosMap.get(note.id) || []));
+  }
+
+  let editingNoteId = null;
+  let editorNotePhotos = []; // { id, blob, isNew }
+  let removedNotePhotoIds = [];
+  let selectedNoteColor = null;
+
+  function renderNoteColorSwatches() {
+    const row = $('#note-color-row');
+    row.innerHTML = '';
+
+    const noneBtn = document.createElement('button');
+    noneBtn.type = 'button';
+    noneBtn.className = 'color-swatch none' + (selectedNoteColor === null ? ' selected' : '');
+    noneBtn.setAttribute('aria-label', 'No colour');
+    noneBtn.addEventListener('click', () => { selectedNoteColor = null; renderNoteColorSwatches(); });
+    row.appendChild(noneBtn);
+
+    for (const color of NOTE_COLORS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'color-swatch' + (selectedNoteColor === color ? ' selected' : '');
+      btn.style.setProperty('--swatch-color', `var(--note-${color})`);
+      btn.setAttribute('aria-label', color);
+      btn.addEventListener('click', () => { selectedNoteColor = color; renderNoteColorSwatches(); });
+      row.appendChild(btn);
+    }
+  }
+
+  function renderNoteEditorPhotoGrid() {
+    noteEditorUrls.revokeAll();
+    const grid = $('#note-photo-grid');
+    grid.innerHTML = '';
+    for (const p of editorNotePhotos) {
+      const thumb = document.createElement('div');
+      thumb.className = 'photo-thumb';
+      const img = document.createElement('img');
+      img.src = noteEditorUrls.track(URL.createObjectURL(p.blob));
+      img.alt = '';
+      thumb.appendChild(img);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'photo-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.setAttribute('aria-label', 'Remove photo');
+      removeBtn.addEventListener('click', () => {
+        if (!p.isNew) removedNotePhotoIds.push(p.id);
+        editorNotePhotos = editorNotePhotos.filter((x) => x !== p);
+        renderNoteEditorPhotoGrid();
+      });
+      thumb.appendChild(removeBtn);
+      grid.appendChild(thumb);
+    }
+  }
+
+  async function openNoteEditor(noteId) {
+    editingNoteId = noteId || null;
+    editorNotePhotos = [];
+    removedNotePhotoIds = [];
+    selectedNoteColor = null;
+
+    $('#note-title').value = '';
+    $('#note-text').value = '';
+    $('#btn-note-delete').hidden = !editingNoteId;
+
+    if (editingNoteId) {
+      const note = await DB.getNote(editingNoteId);
+      const photos = await DB.getPhotosForNote(editingNoteId);
+      $('#note-date').textContent = formatDateLabel(note.createdAt);
+      $('#note-title').value = note.title || '';
+      $('#note-text').value = note.text || '';
+      selectedNoteColor = note.color || null;
+      editorNotePhotos = photos.map((p) => ({ id: p.id, blob: p.blob, isNew: false }));
+    } else {
+      $('#note-date').textContent = formatDateLabel(new Date().toISOString());
+    }
+
+    renderNoteColorSwatches();
+    renderNoteEditorPhotoGrid();
+    showView('note-editor');
+    $('#note-title').focus();
+  }
+
+  function addFilesToNoteEditor(fileList) {
+    for (const file of fileList) {
+      editorNotePhotos.push({ id: DB.uuid(), blob: file, isNew: true });
+    }
+    renderNoteEditorPhotoGrid();
+  }
+
+  async function saveNote() {
+    const title = $('#note-title').value.trim();
+    const text = $('#note-text').value.trim();
+
+    if (!title && !text && editorNotePhotos.length === 0) {
+      alert('Add a title, some text, or a photo before saving.');
+      return;
+    }
+
+    const newBlobs = editorNotePhotos.filter((p) => p.isNew).map((p) => p.blob);
+
+    if (editingNoteId) {
+      for (const id of removedNotePhotoIds) await DB.deleteNotePhoto(id);
+      await DB.updateNote(editingNoteId, { title, text, color: selectedNoteColor }, newBlobs);
+    } else {
+      await DB.createNote({ title, text, color: selectedNoteColor, photoBlobs: newBlobs });
+    }
+
+    showView('notes');
+    renderNotesList();
+  }
+
+  async function deleteCurrentNote() {
+    if (!editingNoteId) return;
+    if (!confirm('Delete this note? This cannot be undone.')) return;
+    await DB.deleteNote(editingNoteId);
+    showView('notes');
+    renderNotesList();
+  }
+
+  // ---------------------------------------------------------------
   // Wire up all event listeners
   // ---------------------------------------------------------------
   function init() {
@@ -662,20 +891,27 @@
     $('#btn-new-dictate').addEventListener('click', () => {
       if (currentView === 'tasks') {
         $('#task-input').focus();
+      } else if (currentView === 'notes') {
+        openNoteEditor(null);
       } else {
         openEntryEditor(null);
       }
     });
     $('#btn-settings').addEventListener('click', () => showView('settings'));
-    $('#btn-toggle-view').addEventListener('click', () => {
-      if (currentView === 'tasks') {
-        showView('timeline');
-        renderTimeline();
-      } else {
-        showView('tasks');
-        renderTasks();
-      }
+
+    $('#btn-nav-menu').addEventListener('click', openNavSheet);
+    $('#nav-sheet-backdrop').addEventListener('click', closeNavSheet);
+    $$('.nav-sheet-row').forEach((row) => {
+      row.addEventListener('click', () => goToHomeView(row.dataset.view));
     });
+
+    $('#btn-note-back').addEventListener('click', () => { showView('notes'); renderNotesList(); });
+    $('#btn-save-note').addEventListener('click', saveNote);
+    $('#btn-note-delete').addEventListener('click', deleteCurrentNote);
+    $('#btn-note-add-camera').addEventListener('click', () => $('#note-input-camera').click());
+    $('#btn-note-add-library').addEventListener('click', () => $('#note-input-library').click());
+    $('#note-input-camera').addEventListener('change', (e) => { addFilesToNoteEditor(e.target.files); e.target.value = ''; });
+    $('#note-input-library').addEventListener('change', (e) => { addFilesToNoteEditor(e.target.files); e.target.value = ''; });
 
     $('#btn-open-select').addEventListener('click', () => {
       showView('timeline');
@@ -735,7 +971,7 @@
     });
 
     renderTimeline();
-    updateToggleButton();
+    updateNavButton();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => { /* offline caching just won't be available */ });

@@ -18,6 +18,14 @@
   --border: #ddd2b8;
   --danger: #9c4a3c;
   --shadow: none;
+
+  /* Note colour tags — muted/dusty so they sit quietly alongside the rest
+     of the parchment palette instead of shouting like bright pastels. */
+  --note-rose: #d9b7ae;
+  --note-sage: #b9c4a4;
+  --note-gold: #d7bd80;
+  --note-slate: #a9bac8;
+  --note-terracotta: #cf9b73;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,6 +39,12 @@
     --accent-text: #201a12;
     --border: #423c2c;
     --danger: #d98a7a;
+
+    --note-rose: #7a5049;
+    --note-sage: #59623f;
+    --note-gold: #705a2f;
+    --note-slate: #435262;
+    --note-terracotta: #6b4426;
   }
 }
 
@@ -358,6 +372,102 @@ h1 {
   margin: 8px auto 0;
 }
 
+/* ---------- Notes ---------- */
+.notes-list {
+  padding: 16px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-row {
+  position: relative;
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--note-color, var(--border));
+  background: var(--surface);
+  padding: 12px 34px 12px 14px;
+  cursor: pointer;
+}
+
+.note-row-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  padding-right: 70px; /* keeps the title clear of the date in the corner */
+}
+
+.note-row-date {
+  position: absolute;
+  top: 12px;
+  right: 34px;
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.note-row-text {
+  margin: 0 0 8px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-row-photos {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.note-row-photos img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.note-delete {
+  position: absolute;
+  top: 10px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.note-title-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 2px 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.note-title-input:focus { outline: none; border-bottom-color: var(--accent); }
+
+.color-swatch-row {
+  display: flex;
+  gap: 12px;
+}
+.color-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--swatch-color, var(--surface-2));
+  cursor: pointer;
+  padding: 0;
+}
+.color-swatch.none { background: var(--surface-2); border-style: dashed; border-color: var(--border); }
+.color-swatch.selected { border-color: var(--text); }
+
 /* ---------- Bottom toolbar ---------- */
 .bottom-bar {
   position: fixed;
@@ -402,6 +512,77 @@ h1 {
   cursor: pointer;
 }
 .bar-btn-fab:active { opacity: 0.85; }
+
+/* Balances the bar visually now that Settings has moved to its own corner
+   button — without this, space-between would push the mic button to the
+   far right instead of the middle. */
+.bar-btn-spacer { min-width: 44px; }
+
+/* ---------- Settings corner button ---------- */
+.corner-settings-btn {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  /* #app is centered with max-width:560px, but a fixed element positions
+     against the viewport, not #app — so on anything wider than 560px
+     (desktop, iPad, a landscape iPhone) plain `right: 14px` would drift
+     away from the app's actual right edge. This matches the same offset
+     #app's centering produces, falling back to a plain 14px once the
+     viewport is narrower than #app's max-width. */
+  right: max(14px, calc((100vw - 560px) / 2 + 14px));
+  z-index: 15;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  opacity: 0.55;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.corner-settings-btn:active { opacity: 0.85; }
+
+/* ---------- Nav picker (Journal / Tasks / Notes) ---------- */
+.nav-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.nav-sheet {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 23;
+  max-width: 528px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.nav-sheet-row {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 16px;
+  font-size: 1rem;
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+}
+.nav-sheet-row:last-child { border-bottom: none; }
+.nav-sheet-row:active { background: var(--surface-2); }
+.nav-sheet-row.current { font-weight: 700; color: var(--accent); }
 
 /* ---------- Select bar ---------- */
 .select-bar {

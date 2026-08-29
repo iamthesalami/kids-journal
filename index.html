@@ -63,6 +63,52 @@
     <button id="btn-clear-completed" class="text-btn" type="button" hidden>Clear completed</button>
   </section>
 
+  <!-- ===================== NOTES ===================== -->
+  <section id="view-notes" class="view has-bottom-bar" hidden>
+    <header class="topbar">
+      <h1>Notes</h1>
+    </header>
+
+    <div id="notes-list" class="notes-list"></div>
+    <p id="notes-empty" class="empty-state" hidden>No notes yet.<br>Tap the microphone below to jot one down.</p>
+  </section>
+
+  <!-- ===================== NOTE EDITOR ===================== -->
+  <section id="view-note-editor" class="view" hidden>
+    <header class="topbar">
+      <button id="btn-note-back" class="text-btn" type="button">Back</button>
+      <p id="note-date" class="entry-date"></p>
+      <button id="btn-note-delete" class="text-btn danger" type="button" hidden>Delete</button>
+    </header>
+
+    <div class="editor-body">
+      <input type="text" id="note-title" class="note-title-input" placeholder="Title">
+
+      <textarea id="note-text" class="entry-textarea" rows="4" placeholder="Add more detail if you like..."></textarea>
+      <p class="dictation-hint">Tap a field above, then tap the microphone on your keyboard to dictate.</p>
+
+      <div class="field-group">
+        <label>Colour</label>
+        <div id="note-color-row" class="color-swatch-row"></div>
+      </div>
+
+      <div class="field-group">
+        <label>Photos</label>
+        <div id="note-photo-grid" class="photo-grid"></div>
+        <div class="photo-buttons">
+          <button id="btn-note-add-camera" type="button" class="text-btn-outline">Take Photo</button>
+          <button id="btn-note-add-library" type="button" class="text-btn-outline">Choose Photos</button>
+        </div>
+        <input type="file" id="note-input-camera" accept="image/*" capture="environment" hidden>
+        <input type="file" id="note-input-library" accept="image/*" multiple hidden>
+      </div>
+    </div>
+
+    <div class="editor-footer">
+      <button id="btn-save-note" class="btn-primary" type="button">Save Note</button>
+    </div>
+  </section>
+
   <!-- ===================== ENTRY EDITOR ===================== -->
   <section id="view-entry" class="view" hidden>
     <header class="topbar">
@@ -151,12 +197,13 @@
     </div>
   </section>
 
-  <!-- Persistent bottom bar — visible on Timeline and Tasks, hidden on the
-       full-screen editor/settings/migrate views (which have their own Back
-       navigation). The left button context-switches between the two. -->
+  <!-- Persistent bottom bar — visible on Timeline, Tasks and Notes; hidden
+       on the full-screen editor/settings/migrate views (which have their
+       own Back navigation). The left button opens a small picker to jump
+       between the three home views. -->
   <nav id="bottom-bar" class="bottom-bar">
-    <button id="btn-toggle-view" class="bar-btn" type="button">
-      <span id="toggle-view-icon" class="bar-icon">▤</span><span id="toggle-view-label" class="bar-label">Tasks</span>
+    <button id="btn-nav-menu" class="bar-btn" type="button">
+      <span id="nav-menu-icon" class="bar-icon">☰</span><span id="nav-menu-label" class="bar-label">Journal</span>
     </button>
     <button id="btn-new-dictate" class="bar-btn-fab" type="button" aria-label="Dictate">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -166,10 +213,20 @@
         <line x1="8" y1="22" x2="16" y2="22"></line>
       </svg>
     </button>
-    <button id="btn-settings" class="bar-btn" type="button" aria-label="Settings">
-      <span class="bar-icon">⚙</span><span class="bar-label">Settings</span>
-    </button>
+    <div class="bar-btn-spacer" aria-hidden="true"></div>
   </nav>
+
+  <!-- Small popover for jumping between the three home views. -->
+  <div id="nav-sheet-backdrop" class="nav-sheet-backdrop" hidden></div>
+  <div id="nav-sheet" class="nav-sheet" hidden>
+    <button type="button" class="nav-sheet-row" data-view="timeline">Journal</button>
+    <button type="button" class="nav-sheet-row" data-view="tasks">Tasks</button>
+    <button type="button" class="nav-sheet-row" data-view="notes">Notes</button>
+  </div>
+
+  <!-- Settings — a quiet, semi-transparent corner button, visible on the
+       same three home views as the bottom bar. -->
+  <button id="btn-settings" class="corner-settings-btn" type="button" aria-label="Settings">⚙</button>
 
 </div>
 
